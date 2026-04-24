@@ -1,208 +1,279 @@
-# CSA-Swin-OSCC-Detection
-
 <div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
-![PyTorch](https://img.shields.io/badge/PyTorch-2.x-red?logo=pytorch)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Status](https://img.shields.io/badge/Status-Research-orange)
-![Notebook](https://img.shields.io/badge/Notebook-dental(1).ipynb-informational?logo=jupyter)
+```
+ ██████╗███████╗ █████╗       ███████╗██╗    ██╗██╗███╗   ██╗
+██╔════╝██╔════╝██╔══██╗      ██╔════╝██║    ██║██║████╗  ██║
+██║     ███████╗███████║█████╗███████╗██║ █╗ ██║██║██╔██╗ ██║
+██║     ╚════██║██╔══██║╚════╝╚════██║██║███╗██║██║██║╚██╗██║
+╚██████╗███████║██║  ██║      ███████║╚███╔███╔╝██║██║ ╚████║
+ ╚═════╝╚══════╝╚═╝  ╚═╝      ╚══════╝ ╚══╝╚══╝ ╚═╝╚═╝  ╚═══╝
+```
 
-**Automated Oral Squamous Cell Carcinoma Detection via Cross-Scale Attention Swin Transformer**
+### 🔬 Cross-Scale Attention Swin Transformer for OSCC Detection
+
+<br/>
+
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![Jupyter](https://img.shields.io/badge/Notebook-dental(1).ipynb-F37626?style=for-the-badge&logo=jupyter&logoColor=white)](./dental(1).ipynb)
+[![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Research-8B5CF6?style=for-the-badge)]()
+[![GitHub](https://img.shields.io/badge/GitHub-MUKILAN0608-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/MUKILAN0608/CSA-Swin-OSCC-Detection)
+
+<br/>
+
+> *"Empowering early cancer detection through multi-scale vision transformers"*
+
+<br/>
 
 </div>
 
 ---
 
-## Table of Contents
+## 🗂️ Table of Contents
 
-- [Overview](#overview)
-- [Problem Statement](#problem-statement)
-- [Proposed Solution](#proposed-solution)
-- [Architecture](#architecture)
-- [Dataset](#dataset)
-- [Results](#results)
-- [Ablation Study](#ablation-study)
-- [Explainability](#explainability)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Key Contributions](#key-contributions)
-- [Future Work](#future-work)
-- [Citation](#citation)
-- [License](#license)
-
----
-
-## Overview
-
-This project presents a deep learning-based framework for the **automated classification of histopathological images** of the oral cavity into two classes:
-
-- **Normal Epithelium**
-- **Oral Squamous Cell Carcinoma (OSCC)**
-
-Early detection of OSCC is critical for improving patient survival rates. However, manual diagnosis is time-consuming, subjective, and heavily dependent on expert interpretation. To address these challenges, this work proposes a novel multi-scale transformer-based architecture: **CSA-Swin (Cross-Scale Attention Swin Transformer)**.
-
-> **Notebook:** [`dental(1).ipynb`](./dental(1).ipynb) — All code, training, evaluation, and explainability is contained within this single notebook.
-
----
-
-## Problem Statement
-
-- Manual OSCC diagnosis from histopathology slides is **labour-intensive** and requires specialized expertise.
-- Existing deep learning methods often rely on **single-scale inputs**, missing critical multi-resolution tissue patterns.
-- High **inter-observer variability** among pathologists leads to inconsistent diagnoses.
-- There is a pressing need for **automated, interpretable, and high-accuracy** diagnostic tools.
-
----
-
-## Proposed Solution
-
-We propose **CSA-Swin (Cross-Scale Attention Swin Transformer)**, which addresses the above limitations through:
-
-| Feature | Description |
+| | Section |
 |---|---|
-| Dual-scale input | Images at `100×` and `400×` magnifications |
-| Parallel Swin branches | Hierarchical feature extraction per scale |
-| Cross-attention fusion | Discriminative multi-resolution feature integration |
-| Explainability | Grad-CAM and occlusion sensitivity maps |
+| 🔭 | [Overview](#-overview) |
+| ⚠️ | [Problem Statement](#-problem-statement) |
+| 💡 | [Proposed Solution](#-proposed-solution) |
+| 🏗️ | [Architecture](#-architecture) |
+| 🗄️ | [Dataset](#-dataset) |
+| 📊 | [Results](#-results) |
+| 🧪 | [Ablation Study](#-ablation-study) |
+| 🔍 | [Explainability](#-explainability) |
+| 📁 | [Project Structure](#-project-structure) |
+| ⚙️ | [Installation](#-installation) |
+| ▶️ | [Usage](#-usage) |
+| 🏆 | [Key Contributions](#-key-contributions) |
+| 🚀 | [Future Work](#-future-work) |
+| 📝 | [Citation](#-citation) |
 
 ---
 
-## Architecture
+## 🔭 Overview
+
+<div align="center">
 
 ```
-Input (100×) ──────────────────────────────────────────────────┐
-     │                                                          │
-     ▼                                                          │
-┌──────────────────────┐                                       │
-│  Swin Transformer    │ ── Hierarchical Feature Maps (Scale 1) │
-│  Branch A  (100×)    │                        │              │
-└──────────────────────┘                        ▼              │
-                                      ┌──────────────────┐     │
-                                      │  Cross-Attention │     │
-                                      │  Fusion Module   │     │
-                                      └──────────────────┘     │
-                                                │              │
-┌──────────────────────┐                        ▲              │
-│  Swin Transformer    │ ── Hierarchical Feature Maps (Scale 2) │
-│  Branch B  (400×)    │                                       │
-└──────────────────────┘                                       │
-     ▲                                                          │
-     │                                                          │
-Input (400×) ──────────────────────────────────────────────────┘
-
-                                      │
-                                      ▼
-                          ┌───────────────────────┐
-                          │  Classification Head  │
-                          │  (Normal  vs  OSCC)   │
-                          └───────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│   🦷  Histopathological Image  →  🤖  CSA-Swin  →  🎯  Diagnosis   │
+│                                                         │
+│         Normal Epithelium  ✅   or   OSCC  🔴           │
+└─────────────────────────────────────────────────────────┘
 ```
 
-**Core Components:**
+</div>
 
-- **Dual-Branch Swin Transformer** — Extracts hierarchical patch-based features independently for each magnification scale.
-- **Cross-Attention Fusion Module** — Enables interaction between features from 100× (global structure) and 400× (fine cellular details) branches.
-- **Classification Head** — Fully connected layers with softmax output for binary classification.
+This project presents a **deep learning-based framework** for the automated classification of oral cavity histopathological images. Early detection of **Oral Squamous Cell Carcinoma (OSCC)** dramatically improves patient survival rates — yet manual diagnosis remains time-consuming, subjective, and expert-dependent.
 
----
+We solve this with **CSA-Swin**, a novel *Cross-Scale Attention Swin Transformer* that sees what humans might miss.
 
-## Dataset
-
-| Property | Detail |
-|---|---|
-| Total Images | 1,200+ |
-| Magnifications | 100× and 400× |
-| Classes | Normal Epithelium, OSCC |
-| Source | Publicly available histopathological dataset |
-| Format | RGB images (`.jpg` / `.png`) |
+> 📓 **Everything lives in one file:** [`dental(1).ipynb`](./dental(1).ipynb) — training, evaluation, explainability, all in one place.
 
 ---
 
-## Results
-
-### Classification Performance
-
-| Metric | Value |
-|---|---|
-| Overall Accuracy | ~95–96% |
-| AUC (ROC) | ~0.94+ |
-| Normal Class Accuracy | 100% |
-| OSCC Detection Recall | ~94% |
-
-### Evaluation Outputs
-
-The following are generated and visualized within [`dental(1).ipynb`](./dental(1).ipynb):
-
-- Confusion Matrix
-- ROC Curve & AUC
-- Precision-Recall Curve
-- Per-Class Accuracy Report
-- Grad-CAM Heatmaps
-- Occlusion Sensitivity Maps
-- Correct & Misclassified Sample Visualizations
-
----
-
-## Ablation Study
-
-| Model Variant | Accuracy | AUC |
-|---|---|---|
-| Single-scale (100× only) | ~0.85 | ~0.88 |
-| Single-scale (400× only) | ~0.87 | ~0.89 |
-| Dual-scale (no cross-attention) | ~0.89 | ~0.91 |
-| **CSA-Swin (Proposed)** | **~0.95–0.96** | **~0.94+** |
-
-The ablation study confirms that both the dual-scale input strategy and the cross-attention fusion module contribute significantly to overall performance.
-
----
-
-## Explainability
-
-### Grad-CAM (Gradient-weighted Class Activation Mapping)
-- Highlights discriminative regions in histopathological images that drive model predictions.
-- Visualizes attention at both 100× and 400× scales.
-
-### Occlusion Sensitivity Analysis
-- Systematically occludes patches of the input image.
-- Measures prediction sensitivity to identify critical regions for OSCC classification.
-
-Both methods confirm that the model focuses on **clinically relevant cellular and tissue regions**, enhancing interpretability and clinical trust.
-
----
-
-## Project Structure
+## ⚠️ Problem Statement
 
 ```
-CSA-Swin-OSCC-Detection/
+❌  Manual diagnosis  →  Slow · Subjective · Expert-only
+❌  Single-scale CNNs →  Miss multi-resolution tissue patterns
+❌  Black-box models  →  Clinically untrustworthy
+❌  Inter-observer variability → Inconsistent outcomes
+```
+
+There is a pressing clinical need for a system that is **fast**, **accurate**, **multi-scale**, and **interpretable**.
+
+---
+
+## 💡 Proposed Solution
+
+<div align="center">
+
+### ✨ Introducing **CSA-Swin** ✨
+### *Cross-Scale Attention Swin Transformer*
+
+</div>
+
+| 🔑 Feature | 📋 Description |
+|:---:|:---|
+| 🔭 **Dual-Scale Input** | Captures images at both `100×` and `400×` magnifications |
+| 🌳 **Parallel Swin Branches** | Independent hierarchical feature extraction per scale |
+| 🔗 **Cross-Attention Fusion** | Dynamically integrates global structure + fine cellular detail |
+| 🎨 **Grad-CAM Explainability** | Visual attention maps for clinical validation |
+| 🎯 **High Accuracy** | ~95–96% accuracy, AUC >0.94 |
+
+---
+
+## 🏗️ Architecture
+
+```
+                    ╔══════════════════════════════════════════╗
+                    ║         CSA-Swin Architecture            ║
+                    ╚══════════════════════════════════════════╝
+
+  🔬 Input (100×)                           🔬 Input (400×)
+       │                                          │
+       ▼                                          ▼
+┌─────────────────┐                    ┌─────────────────┐
+│  🌲 Swin Branch │                    │  🌲 Swin Branch │
+│     (100×)      │                    │     (400×)      │
+│                 │                    │                 │
+│ Global Tissue   │                    │  Fine Cellular  │
+│   Structure     │                    │    Details      │
+└────────┬────────┘                    └────────┬────────┘
+         │   Feature Maps (Scale 1)             │  Feature Maps (Scale 2)
+         └──────────────┐  ┌───────────────────┘
+                        ▼  ▼
+               ╔═══════════════════╗
+               ║  🔗 Cross-Scale  ║
+               ║ Attention Fusion  ║
+               ║     Module        ║
+               ╚════════╤══════════╝
+                        │  Fused Multi-Resolution Features
+                        ▼
+               ╔═══════════════════╗
+               ║  🎯 Classifier   ║
+               ║   Normal / OSCC   ║
+               ╚═══════════════════╝
+```
+
+**🧩 Core Components:**
+
+- 🌲 **Dual-Branch Swin Transformer** — Patch-based hierarchical features from each magnification scale independently
+- 🔗 **Cross-Attention Fusion Module** — Learned cross-scale interaction between global (100×) and local (400×) features
+- 🎯 **Classification Head** — Fully connected layers with softmax for binary prediction
+
+---
+
+## 🗄️ Dataset
+
+<div align="center">
+
+| 📌 Property | 📋 Detail |
+|:---:|:---:|
+| 🖼️ Total Images | **1,200+** |
+| 🔭 Magnifications | **100× and 400×** |
+| 🏷️ Classes | **Normal Epithelium · OSCC** |
+| 🌐 Source | Publicly available histopathological dataset |
+| 📂 Format | RGB images `.jpg` / `.png` |
+
+</div>
+
+---
+
+## 📊 Results
+
+### 🏆 Classification Performance
+
+<div align="center">
+
+| 📈 Metric | 🎯 Value |
+|:---:|:---:|
+| ✅ Overall Accuracy | **~95–96%** |
+| 📉 AUC (ROC) | **~0.94+** |
+| 🟢 Normal Class Accuracy | **100%** |
+| 🔴 OSCC Detection Recall | **~94%** |
+
+</div>
+
+### 📋 Evaluation Outputs
+
+All of the following are generated directly inside [`dental(1).ipynb`](./dental(1).ipynb):
+
+```
+📊  Confusion Matrix              🔵  ROC Curve & AUC
+📈  Precision-Recall Curve        📋  Per-Class Accuracy Report
+🔥  Grad-CAM Heatmaps             🌡️  Occlusion Sensitivity Maps
+✅  Correct Predictions           ❌  Misclassified Sample Analysis
+```
+
+---
+
+## 🧪 Ablation Study
+
+<div align="center">
+
+| 🧬 Model Variant | 🎯 Accuracy | 📈 AUC |
+|:---|:---:|:---:|
+| 📷 Single-scale (100× only) | ~0.85 | ~0.88 |
+| 📷 Single-scale (400× only) | ~0.87 | ~0.89 |
+| 🔭 Dual-scale (no cross-attention) | ~0.89 | ~0.91 |
+| 🏆 **CSA-Swin (Proposed)** | **~0.95–0.96** | **~0.94+** |
+
+</div>
+
+```
+Performance Gain:
+  Single-scale  ████████████░░░░  ~85%
+  Dual-scale    ██████████████░░  ~89%
+  CSA-Swin      ███████████████▉  ~95–96%  ← PROPOSED
+```
+
+> 🔑 Both **dual-scale inputs** and **cross-attention fusion** are essential — the ablation confirms each component contributes meaningfully.
+
+---
+
+## 🔍 Explainability
+
+### 🔥 Grad-CAM *(Gradient-weighted Class Activation Mapping)*
+
+```
+  Input Image  →  Swin Features  →  Gradient Maps  →  🔥 Heatmap Overlay
+```
+- Pinpoints discriminative tissue regions driving each prediction
+- Visualized at both 100× and 400× scales for complete coverage
+
+### 🌡️ Occlusion Sensitivity Analysis
+
+```
+  Input Image  →  Patch Occlusion  →  Prediction Drop  →  🌡️ Sensitivity Map
+```
+- Systematically masks patches and measures prediction sensitivity
+- Reveals which spatial regions are truly critical for classification
+
+> ✅ Both methods confirm the model attends to **clinically meaningful cellular structures** — not noise or artifacts.
+
+---
+
+## 📁 Project Structure
+
+```
+🗂️  CSA-Swin-OSCC-Detection/
 │
-├── dental(1).ipynb      # Complete pipeline: data loading, training,
-│                        # evaluation, and explainability
+├── 📓  dental(1).ipynb     ← THE ENTIRE PROJECT LIVES HERE
+│                              ├─ Data Loading & Preprocessing
+│                              ├─ CSA-Swin Model Definition
+│                              ├─ Training & Validation Loop
+│                              ├─ Evaluation & Metrics
+│                              ├─ Grad-CAM Explainability
+│                              └─ Ablation Study
 │
-└── README.md
+└── 📄  README.md
 ```
 
-> All model definitions, training loops, evaluation metrics, and visualizations are self-contained within `dental(1).ipynb`.
+> 💡 **No scripts, no modules, no subfolders** — the complete pipeline is self-contained within a single Jupyter notebook.
 
 ---
 
-## Installation
+## ⚙️ Installation
 
-### Prerequisites
+### 📋 Prerequisites
 
-- Python 3.12+
-- CUDA-enabled GPU (recommended)
-- Jupyter Notebook or JupyterLab
+```
+🐍  Python 3.12+
+⚡  CUDA-enabled GPU  (recommended)
+📓  Jupyter Notebook or JupyterLab
+```
 
-### Clone the Repository
+### 📥 Clone the Repository
 
 ```bash
 git clone https://github.com/MUKILAN0608/CSA-Swin-OSCC-Detection.git
 cd CSA-Swin-OSCC-Detection
 ```
 
-### Install Dependencies
+### 📦 Install Dependencies
 
 ```bash
 pip install torch torchvision timm numpy opencv-python matplotlib scikit-learn grad-cam jupyter
@@ -210,54 +281,69 @@ pip install torch torchvision timm numpy opencv-python matplotlib scikit-learn g
 
 ---
 
-## Usage
+## ▶️ Usage
 
-Open and run the notebook end-to-end:
+### 🚀 Launch the Notebook
 
 ```bash
 jupyter notebook "dental(1).ipynb"
 ```
 
-The notebook is organized into the following sequential sections:
+### 📖 Notebook Sections
 
-| Section | Description |
-|---|---|
-| 1. Data Loading & Preprocessing | Load 100× and 400× images, apply augmentations |
-| 2. Model Definition | CSA-Swin architecture (dual-branch + cross-attention) |
-| 3. Training | Training loop with validation and checkpointing |
-| 4. Evaluation | Metrics, confusion matrix, ROC, precision-recall |
-| 5. Explainability | Grad-CAM and occlusion sensitivity visualizations |
-| 6. Ablation Study | Comparison across model variants |
-
----
-
-## Key Contributions
-
-1. **Novel Multi-Scale Architecture** — CSA-Swin leverages both 100× and 400× histopathological inputs simultaneously, capturing complementary global and local tissue features.
-2. **Cross-Attention Fusion** — A dedicated fusion module enables dynamic, learned interaction between multi-resolution feature maps.
-3. **High Classification Performance** — Achieves ~95–96% accuracy and AUC >0.94, outperforming standard single-scale and baseline deep learning models.
-4. **Clinical Interpretability** — Grad-CAM and occlusion sensitivity analyses provide visual evidence of clinically meaningful attention.
-5. **Comprehensive Evaluation** — Includes ablation study, per-class analysis, precision-recall curves, and misclassification analysis.
+| 🔢 Step | 📌 Section | 📋 What Happens |
+|:---:|:---|:---|
+| 1️⃣ | Data Loading & Preprocessing | Load 100× and 400× images, augmentations |
+| 2️⃣ | Model Definition | Build CSA-Swin dual-branch + cross-attention |
+| 3️⃣ | Training | Train with validation, checkpointing |
+| 4️⃣ | Evaluation | Metrics, confusion matrix, ROC, P-R curve |
+| 5️⃣ | Explainability | Grad-CAM & occlusion sensitivity maps |
+| 6️⃣ | Ablation Study | Compare single-scale vs dual-scale vs CSA-Swin |
 
 ---
 
-## Future Work
+## 🏆 Key Contributions
 
-- [ ] Deployment as a clinical decision support system
-- [ ] Real-time whole-slide image (WSI) inference pipeline
-- [ ] Extension to multi-class oral lesion classification
-- [ ] Integration with federated learning for multi-hospital training
-- [ ] Validation on external clinical datasets for generalizability
+```
+🥇  Novel multi-scale transformer architecture (CSA-Swin)
+🥈  Cross-attention fusion for 100× + 400× feature integration
+🥉  ~95–96% accuracy and AUC >0.94 on OSCC classification
+🎖️  Clinically interpretable via Grad-CAM & occlusion sensitivity
+🎖️  Full ablation study validating each architectural component
+```
+
+---
+
+## 🚀 Future Work
+
+- [ ] 🏥 **Clinical Deployment** — Decision support system for pathology labs
+- [ ] ⚡ **Real-Time WSI Inference** — Whole-slide image streaming pipeline
+- [ ] 🏷️ **Multi-Class Extension** — Classify multiple oral lesion subtypes
+- [ ] 🌐 **Federated Learning** — Multi-hospital privacy-preserving training
+- [ ] 🔬 **External Validation** — Generalizability on independent clinical datasets
+- [ ] 🤖 **Vision-Language Models** — Automated pathology report generation
+
 
 
 ---
 
-## License
+## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE) — feel free to use, modify, and distribute with attribution.
 
 ---
 
 <div align="center">
-Made for advancing early detection of Oral Squamous Cell Carcinoma through interpretable deep learning.
+
+```
+🔬 Built with passion for early cancer detection 🔬
+```
+
+[![GitHub Stars](https://img.shields.io/github/stars/MUKILAN0608/CSA-Swin-OSCC-Detection?style=for-the-badge&color=FFD700&logo=github)](https://github.com/MUKILAN0608/CSA-Swin-OSCC-Detection)
+[![GitHub Forks](https://img.shields.io/github/forks/MUKILAN0608/CSA-Swin-OSCC-Detection?style=for-the-badge&color=4ECDC4&logo=github)](https://github.com/MUKILAN0608/CSA-Swin-OSCC-Detection)
+
+<br/>
+
+*If this project helped you, please consider giving it a ⭐ on GitHub!*
+
 </div>
