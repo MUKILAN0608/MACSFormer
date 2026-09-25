@@ -1,349 +1,213 @@
-<div align="center">
+# MACSFormer++ for OSCC Detection
 
-```
- ██████╗███████╗ █████╗       ███████╗██╗    ██╗██╗███╗   ██╗
-██╔════╝██╔════╝██╔══██╗      ██╔════╝██║    ██║██║████╗  ██║
-██║     ███████╗███████║█████╗███████╗██║ █╗ ██║██║██╔██╗ ██║
-██║     ╚════██║██╔══██║╚════╝╚════██║██║███╗██║██║██║╚██╗██║
-╚██████╗███████║██║  ██║      ███████║╚███╔███╔╝██║██║ ╚████║
- ╚═════╝╚══════╝╚═╝  ╚═╝      ╚══════╝ ╚══╝╚══╝ ╚═╝╚═╝  ╚═══╝
-```
+Dual-magnification histopathology classification for distinguishing normal oral epithelium from oral squamous cell carcinoma (OSCC).
 
-### 🔬 Cross-Scale Attention Swin Transformer for OSCC Detection
+This repository contains a notebook-based research implementation of **MACSFormer++**, a dual-branch transformer that processes paired **100x** and **400x** microscopy images. The two views are fused through morphology-aware and cross-scale modules before binary classification.
 
-<br/>
+> Research software notice: this project is intended for experimentation and evaluation. It is not a medical device and must not be used as a substitute for diagnosis by a qualified pathologist.
 
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org)
-[![Jupyter](https://img.shields.io/badge/Notebook-dental(1).ipynb-F37626?style=for-the-badge&logo=jupyter&logoColor=white)](./dental(1).ipynb)
-[![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Research-8B5CF6?style=for-the-badge)]()
-[![GitHub](https://img.shields.io/badge/GitHub-MUKILAN0608-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/MUKILAN0608/CSA-Swin-OSCC-Detection)
+## Contents
 
-<br/>
+- [What the notebook does](#what-the-notebook-does)
+- [Model](#model)
+- [Dataset and pairing](#dataset-and-pairing)
+- [Evaluation](#evaluation)
+- [Requirements](#requirements)
+- [Running the notebook](#running-the-notebook)
+- [Outputs](#outputs)
+- [Repository layout](#repository-layout)
+- [Reproducibility notes](#reproducibility-notes)
+- [Limitations](#limitations)
+- [License](#license)
 
-> *"Empowering early cancer detection through multi-scale vision transformers"*
+## What the notebook does
 
-<br/>
+[`oscc_completed.ipynb`](oscc_completed.ipynb) contains the end-to-end workflow:
 
-</div>
+1. Select a CUDA device when available.
+2. Mount Google Drive and extract `OSCC_DS1.zip`.
+3. Discover and pair matching 100x and 400x images.
+4. Split cases into training and held-out test sets with class stratification.
+5. Apply image transforms and create PyTorch data loaders.
+6. Build and train MACSFormer++ with focal loss, AdamW, mixed precision, gradient accumulation, checkpointing, and early stopping.
+7. Evaluate predictions with classification and calibration metrics.
+8. Generate Grad-CAM and occlusion-sensitivity explanations.
+9. Run deletion/insertion explanation evaluation.
+10. Train and evaluate ablations without CSMM, AMWG, or CSTE, and profile model cost.
 
----
+The notebook is a research log as well as an implementation. It contains repeated exploratory and evaluation cells, so cells should be run in logical sections rather than blindly using **Run All**.
 
-## 🗂️ Table of Contents
+## Model
 
-| | Section |
-|---|---|
-| 🔭 | [Overview](#-overview) |
-| ⚠️ | [Problem Statement](#-problem-statement) |
-| 💡 | [Proposed Solution](#-proposed-solution) |
-| 🏗️ | [Architecture](#-architecture) |
-| 🗄️ | [Dataset](#-dataset) |
-| 📊 | [Results](#-results) |
-| 🧪 | [Ablation Study](#-ablation-study) |
-| 🔍 | [Explainability](#-explainability) |
-| 📁 | [Project Structure](#-project-structure) |
-| ⚙️ | [Installation](#-installation) |
-| ▶️ | [Usage](#-usage) |
-| 🏆 | [Key Contributions](#-key-contributions) |
-| 🚀 | [Future Work](#-future-work) |
-| 📝 | [Citation](#-citation) |
+MACSFormer++ uses two parallel image branches:
 
----
-
-## 🔭 Overview
-
-<div align="center">
-
-```
-┌─────────────────────────────────────────────────────────┐
-│   🦷  Histopathological Image  →  🤖  CSA-Swin  →  🎯  Diagnosis   │
-│                                                         │
-│         Normal Epithelium  ✅   or   OSCC  🔴           │
-└─────────────────────────────────────────────────────────┘
+```text
+100x image ─┐
+            ├─ hierarchical patch embedding
+            ├─ morphology descriptors (AMWG)
+            ├─ Swin-style window attention stages
+            ├─ cross-stage morphology memory (CSMM)
+            ├─ cross-scale token exchange (CSTE)
+            └─ adaptive magnification routing (AMR) ─┐
+                                                     ├─ classifier
+400x image ─┘                                        ┘
 ```
 
-</div>
+Main components implemented in the notebook:
 
-This project presents a **deep learning-based framework** for the automated classification of oral cavity histopathological images. Early detection of **Oral Squamous Cell Carcinoma (OSCC)** dramatically improves patient survival rates — yet manual diagnosis remains time-consuming, subjective, and expert-dependent.
+- **HierarchicalPatchEmbedding**: convolutional feature extraction before tokenization.
+- **AdaptiveMorphologyWindowGenerator (AMWG)**: produces local morphology descriptors from token grids.
+- **ModifiedSwinBlock**: window attention with morphology-aware gating and residual refinement.
+- **CrossStageMorphologyMemory (CSMM)**: carries morphology information between stages.
+- **CrossScaleTokenExchange (CSTE)**: exchanges descriptors between the 100x and 400x branches.
+- **AdaptiveMagnificationRouter (AMR)**: learns per-token weights for fusing both magnifications.
+- **FocalLoss**: handles the binary classification objective with optional label smoothing.
 
-We solve this with **CSA-Swin**, a novel *Cross-Scale Attention Swin Transformer* that sees what humans might miss.
+## Dataset and pairing
 
-> 📓 **Everything lives in one file:** [`dental(1).ipynb`](./dental(1).ipynb) — training, evaluation, explainability, all in one place.
+The notebook expects a dataset archive at:
 
----
-
-## ⚠️ Problem Statement
-
-```
-❌  Manual diagnosis  →  Slow · Subjective · Expert-only
-❌  Single-scale CNNs →  Miss multi-resolution tissue patterns
-❌  Black-box models  →  Clinically untrustworthy
-❌  Inter-observer variability → Inconsistent outcomes
-```
-
-There is a pressing clinical need for a system that is **fast**, **accurate**, **multi-scale**, and **interpretable**.
-
----
-
-## 💡 Proposed Solution
-
-<div align="center">
-
-### ✨ Introducing **CSA-Swin** ✨
-### *Cross-Scale Attention Swin Transformer*
-
-</div>
-
-| 🔑 Feature | 📋 Description |
-|:---:|:---|
-| 🔭 **Dual-Scale Input** | Captures images at both `100×` and `400×` magnifications |
-| 🌳 **Parallel Swin Branches** | Independent hierarchical feature extraction per scale |
-| 🔗 **Cross-Attention Fusion** | Dynamically integrates global structure + fine cellular detail |
-| 🎨 **Grad-CAM Explainability** | Visual attention maps for clinical validation |
-| 🎯 **High Accuracy** | ~95–96% accuracy, AUC >0.94 |
-
----
-
-## 🏗️ Architecture
-
-```
-                    ╔══════════════════════════════════════════╗
-                    ║         CSA-Swin Architecture            ║
-                    ╚══════════════════════════════════════════╝
-
-  🔬 Input (100×)                           🔬 Input (400×)
-       │                                          │
-       ▼                                          ▼
-┌─────────────────┐                    ┌─────────────────┐
-│  🌲 Swin Branch │                    │  🌲 Swin Branch │
-│     (100×)      │                    │     (400×)      │
-│                 │                    │                 │
-│ Global Tissue   │                    │  Fine Cellular  │
-│   Structure     │                    │    Details      │
-└────────┬────────┘                    └────────┬────────┘
-         │   Feature Maps (Scale 1)             │  Feature Maps (Scale 2)
-         └──────────────┐  ┌───────────────────┘
-                        ▼  ▼
-               ╔═══════════════════╗
-               ║  🔗 Cross-Scale  ║
-               ║ Attention Fusion  ║
-               ║     Module        ║
-               ╚════════╤══════════╝
-                        │  Fused Multi-Resolution Features
-                        ▼
-               ╔═══════════════════╗
-               ║  🎯 Classifier   ║
-               ║   Normal / OSCC   ║
-               ╚═══════════════════╝
+```text
+/content/drive/MyDrive/OSCC_DS1.zip
 ```
 
-**🧩 Core Components:**
+After extraction, the expected directory structure is equivalent to:
 
-- 🌲 **Dual-Branch Swin Transformer** — Patch-based hierarchical features from each magnification scale independently
-- 🔗 **Cross-Attention Fusion Module** — Learned cross-scale interaction between global (100×) and local (400×) features
-- 🎯 **Classification Head** — Fully connected layers with softmax for binary prediction
-
----
-
-## 🗄️ Dataset
-
-<div align="center">
-
-| 📌 Property | 📋 Detail |
-|:---:|:---:|
-| 🖼️ Total Images | **1,200+** |
-| 🔭 Magnifications | **100× and 400×** |
-| 🏷️ Classes | **Normal Epithelium · OSCC** |
-| 🌐 Source | Publicly available histopathological dataset |
-| 📂 Format | RGB images `.jpg` / `.png` |
-
-</div>
-
----
-
-## 📊 Results
-
-### 🏆 Classification Performance
-
-<div align="center">
-
-| 📈 Metric | 🎯 Value |
-|:---:|:---:|
-| ✅ Overall Accuracy | **~95–96%** |
-| 📉 AUC (ROC) | **~0.94+** |
-| 🟢 Normal Class Accuracy | **100%** |
-| 🔴 OSCC Detection Recall | **~94%** |
-
-</div>
-
-### 📋 Evaluation Outputs
-
-All of the following are generated directly inside [`dental(1).ipynb`](./dental(1).ipynb):
-
-```
-📊  Confusion Matrix              🔵  ROC Curve & AUC
-📈  Precision-Recall Curve        📋  Per-Class Accuracy Report
-🔥  Grad-CAM Heatmaps             🌡️  Occlusion Sensitivity Maps
-✅  Correct Predictions           ❌  Misclassified Sample Analysis
+```text
+dataset/
+└── Histopathological images of oral squamous cell car/
+    ├── First set/
+    │   ├── 400X normal epithelium/
+    │   └── 400x OSCC/
+    └── Second set/
+        ├── 100x normal epithelium/
+        └── 100X OSCC/
 ```
 
----
+Images are paired by the case identifier and image number in filenames such as:
 
-## 🧪 Ablation Study
-
-<div align="center">
-
-| 🧬 Model Variant | 🎯 Accuracy | 📈 AUC |
-|:---|:---:|:---:|
-| 📷 Single-scale (100× only) | ~0.85 | ~0.88 |
-| 📷 Single-scale (400× only) | ~0.87 | ~0.89 |
-| 🔭 Dual-scale (no cross-attention) | ~0.89 | ~0.91 |
-| 🏆 **CSA-Swin (Proposed)** | **~0.95–0.96** | **~0.94+** |
-
-</div>
-
-```
-Performance Gain:
-  Single-scale  ████████████░░░░  ~85%
-  Dual-scale    ██████████████░░  ~89%
-  CSA-Swin      ███████████████▉  ~95–96%  ← PROPOSED
+```text
+Case 10. 37.jpg
 ```
 
-> 🔑 Both **dual-scale inputs** and **cross-attention fusion** are essential — the ablation confirms each component contributes meaningfully.
+Only pairs present at both magnifications are retained. The notebook rejects duplicate pair keys, checks that files exist, and verifies that the 100x and 400x members of every pair refer to the same case and image number.
 
----
+### Split strategy
 
-## 🔍 Explainability
+The split is performed at the **case level**, not the image level. All image pairs from one case remain in the same subset, which prevents near-duplicate images from the same case appearing in both training and test data. The configured split is stratified 80/20 with seed `42`.
 
-### 🔥 Grad-CAM *(Gradient-weighted Class Activation Mapping)*
+## Evaluation
 
-```
-  Input Image  →  Swin Features  →  Gradient Maps  →  🔥 Heatmap Overlay
-```
-- Pinpoints discriminative tissue regions driving each prediction
-- Visualized at both 100× and 400× scales for complete coverage
+The notebook includes:
 
-### 🌡️ Occlusion Sensitivity Analysis
+- accuracy, precision, recall/sensitivity, specificity, and F1 score;
+- ROC curves and ROC-AUC;
+- confusion matrices and classification reports;
+- expected calibration error (ECE) and Brier score;
+- per-class accuracy;
+- Grad-CAM overlays for both magnifications;
+- patch-based occlusion sensitivity maps;
+- deletion/insertion curves and AUC summaries;
+- qualitative visualizations of correct and incorrect predictions;
+- ablation comparisons for CSMM, AMWG, and CSTE;
+- parameter, FLOPs, memory, latency, and throughput profiling.
 
-```
-  Input Image  →  Patch Occlusion  →  Prediction Drop  →  🌡️ Sensitivity Map
-```
-- Systematically masks patches and measures prediction sensitivity
-- Reveals which spatial regions are truly critical for classification
+The notebook contains cells referring to saved checkpoints such as `best_model_finetuned.pth`, `best_model_no_csmm.pth`, `best_model_no_amwg.pth`, and `best_model_no_cste.pth`. These files are generated artifacts and are not included in this repository.
 
-> ✅ Both methods confirm the model attends to **clinically meaningful cellular structures** — not noise or artifacts.
+## Requirements
 
----
+Recommended environment:
 
-## 📁 Project Structure
+- Python 3.10+
+- PyTorch and torchvision
+- CUDA-enabled GPU with a compatible PyTorch build
+- Jupyter Notebook, JupyterLab, or Google Colab
 
-```
-🗂️  CSA-Swin-OSCC-Detection/
-│
-├── 📓  dental(1).ipynb     ← THE ENTIRE PROJECT LIVES HERE
-│                              ├─ Data Loading & Preprocessing
-│                              ├─ CSA-Swin Model Definition
-│                              ├─ Training & Validation Loop
-│                              ├─ Evaluation & Metrics
-│                              ├─ Grad-CAM Explainability
-│                              └─ Ablation Study
-│
-└── 📄  README.md
-```
-
-> 💡 **No scripts, no modules, no subfolders** — the complete pipeline is self-contained within a single Jupyter notebook.
-
----
-
-## ⚙️ Installation
-
-### 📋 Prerequisites
-
-```
-🐍  Python 3.12+
-⚡  CUDA-enabled GPU  (recommended)
-📓  Jupyter Notebook or JupyterLab
-```
-
-### 📥 Clone the Repository
+The notebook uses the following Python packages:
 
 ```bash
-git clone https://github.com/MUKILAN0608/CSA-Swin-OSCC-Detection.git
-cd CSA-Swin-OSCC-Detection
+pip install torch torchvision timm numpy pandas pillow opencv-python \
+    matplotlib seaborn scikit-learn scipy tqdm thop gdown huggingface_hub
 ```
 
-### 📦 Install Dependencies
+Install a PyTorch build appropriate for the local CUDA version by following the instructions at [pytorch.org](https://pytorch.org/get-started/locally/) before installing the remaining packages.
+
+## Running the notebook
+
+### Google Colab
+
+1. Open `oscc_completed.ipynb` in Google Colab.
+2. Select a GPU runtime.
+3. Upload `OSCC_DS1.zip` to Google Drive at `My Drive/OSCC_DS1.zip`.
+4. Run the setup, extraction, path configuration, pairing, and loader cells first.
+5. Confirm the pairing and case-leakage checks pass.
+6. Define the model and run the training cell.
+7. Run evaluation and explainability cells after a checkpoint has been created.
+8. Run ablation and profiling cells only after the required baseline variables and checkpoints exist.
+
+### Local Jupyter
+
+The notebook contains Colab-specific cells such as `google.colab.drive.mount` and `/content` paths. For local execution, replace those cells with local dataset paths and remove or skip the Drive mount. Then launch it with:
 
 ```bash
-pip install torch torchvision timm numpy opencv-python matplotlib scikit-learn grad-cam jupyter
+jupyter lab oscc_completed.ipynb
 ```
 
----
+The notebook does not currently provide a standalone training script or a `requirements.txt` file, so the notebook cell order and variable state are part of the current execution contract.
 
-## ▶️ Usage
+## Outputs
 
-### 🚀 Launch the Notebook
+Depending on the cells executed, the workflow can create:
 
-```bash
-jupyter notebook "dental(1).ipynb"
+```text
+best_model_finetuned.pth
+best_model_no_csmm.pth
+best_model_no_amwg.pth
+best_model_no_cste.pth
+prediction_results.csv
+MACSFormer_ablation_complete.csv
+MACSFormer_ablation_baseline_delta.csv
+MACSFormer_component_importance.csv
+explainability_figures_fixed/
+explainability_evaluation/
 ```
 
-### 📖 Notebook Sections
+The explainability evaluation writes raw curve data, sample-level results, aggregate tables, figures, and representative sample visualizations under `explainability_evaluation/`.
 
-| 🔢 Step | 📌 Section | 📋 What Happens |
-|:---:|:---|:---|
-| 1️⃣ | Data Loading & Preprocessing | Load 100× and 400× images, augmentations |
-| 2️⃣ | Model Definition | Build CSA-Swin dual-branch + cross-attention |
-| 3️⃣ | Training | Train with validation, checkpointing |
-| 4️⃣ | Evaluation | Metrics, confusion matrix, ROC, P-R curve |
-| 5️⃣ | Explainability | Grad-CAM & occlusion sensitivity maps |
-| 6️⃣ | Ablation Study | Compare single-scale vs dual-scale vs CSA-Swin |
+## Repository layout
 
----
-
-## 🏆 Key Contributions
-
-```
-🥇  Novel multi-scale transformer architecture (CSA-Swin)
-🥈  Cross-attention fusion for 100× + 400× feature integration
-🥉  ~95–96% accuracy and AUC >0.94 on OSCC classification
-🎖️  Clinically interpretable via Grad-CAM & occlusion sensitivity
-🎖️  Full ablation study validating each architectural component
+```text
+.
+├── LICENSE
+├── README.md
+├── oscc_100x.ipynb
+├── oscc_400x.ipynb
+└── oscc_completed.ipynb
 ```
 
----
+`oscc_completed.ipynb` is the consolidated notebook described by this README. The 100x and 400x notebooks are additional notebook artifacts in the repository and may contain earlier or specialized experiments.
 
-## 🚀 Future Work
+## Reproducibility notes
 
-- [ ] 🏥 **Clinical Deployment** — Decision support system for pathology labs
-- [ ] ⚡ **Real-Time WSI Inference** — Whole-slide image streaming pipeline
-- [ ] 🏷️ **Multi-Class Extension** — Classify multiple oral lesion subtypes
-- [ ] 🌐 **Federated Learning** — Multi-hospital privacy-preserving training
-- [ ] 🔬 **External Validation** — Generalizability on independent clinical datasets
-- [ ] 🤖 **Vision-Language Models** — Automated pathology report generation
+- The configured random seed is `42` for Python, NumPy, and PyTorch.
+- GPU availability changes memory use, runtime, mixed-precision behavior, and profiling results.
+- Data-loader worker settings may need adjustment for Windows or constrained environments.
+- Training and evaluation are stateful notebook operations; re-running cells out of order can overwrite models, loaders, metrics, or helper functions.
+- Reported metrics should be regenerated from a fresh run with a documented dataset split and checkpoint. The notebook file itself has not been validated as a clean, linear run in this repository state.
+- Results from the held-out test set should be reported separately from cross-validation results. The notebook includes both workflows.
 
+## Limitations
 
+- The dataset path and directory names are currently hard-coded for the Colab/Google Drive layout.
+- Dataset metadata, subject-level provenance, and external validation are not managed by a separate data pipeline.
+- The repository does not include the image dataset or trained checkpoint files.
+- The notebook contains duplicate and exploratory cells that would benefit from consolidation into reusable Python modules and a configuration file.
+- Performance on this dataset does not establish clinical validity or generalization to other laboratories, scanners, staining protocols, or patient populations.
 
----
+## License
 
-## 📄 License
+This project is distributed under the [MIT License](LICENSE).
 
-This project is licensed under the [MIT License](LICENSE) — feel free to use, modify, and distribute with attribution.
+## Citation
 
----
-
-<div align="center">
-
-```
-🔬 Built with passion for early cancer detection 🔬
-```
-
-[![GitHub Stars](https://img.shields.io/github/stars/MUKILAN0608/CSA-Swin-OSCC-Detection?style=for-the-badge&color=FFD700&logo=github)](https://github.com/MUKILAN0608/CSA-Swin-OSCC-Detection)
-[![GitHub Forks](https://img.shields.io/github/forks/MUKILAN0608/CSA-Swin-OSCC-Detection?style=for-the-badge&color=4ECDC4&logo=github)](https://github.com/MUKILAN0608/CSA-Swin-OSCC-Detection)
-
-<br/>
-
-*If this project helped you, please consider giving it a ⭐ on GitHub!*
-
-</div>
+No formal publication citation is included in the repository yet. When using this work, cite the repository and identify the exact notebook version, dataset split, checkpoint, and evaluation protocol used.

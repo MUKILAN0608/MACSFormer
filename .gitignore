@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs
+*.log
+
+# ML outputs
+checkpoints/
+models/
+weights/
+runs/
+outputs/
+artifacts/
+
+# Large datasets
+data/
+dataset/
+datasets/
+*.csv
+*.zip
+*.tar
+*.tar.gz
+*.h5
+*.hdf5
+*.pth
+*.pt
+*.ckpt
+*.onnx
+
+# Secrets
+.env
+.env.*
+!.env.example
