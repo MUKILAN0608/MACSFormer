@@ -1,8 +1,8 @@
-# MACSFormer++ for OSCC Detection
+# MACSFormer for OSCC Detection
 
 Dual-magnification histopathology classification for distinguishing normal oral epithelium from oral squamous cell carcinoma (OSCC).
 
-This repository contains a notebook-based research implementation of **MACSFormer++**, a dual-branch transformer that processes paired **100x** and **400x** microscopy images. The two views are fused through morphology-aware and cross-scale modules before binary classification.
+This repository contains a notebook-based research implementation of **MACSFormer**, a dual-branch transformer that processes paired **100x** and **400x** microscopy images. The two views are fused through morphology-aware and cross-scale modules before binary classification.
 
 > Research software notice: this project is intended for experimentation and evaluation. It is not a medical device and must not be used as a substitute for diagnosis by a qualified pathologist.
 
